@@ -15,6 +15,7 @@ export interface Transaction {
   description: string;
   amount: number;
   category: string;
+  subCategory?: string;
   type: 'income' | 'expense';
 }
 
@@ -45,4 +46,43 @@ export interface TradeAnalysis {
     pnl: number;
     reason: string;
   };
+}
+
+export interface Invoice {
+  id: string;
+  client: string;
+  dueDate: string;
+  status: 'PAID' | 'PENDING' | 'OVERDUE';
+  amount: number;
+}
+
+export interface Budget {
+  id: string;
+  category: string;
+  allocated: number;
+  spent: number;
+}
+
+export interface Goal {
+  id: string;
+  name: string;
+  target: number;
+  saved: number;
+  emoji: string;
+}
+
+export interface AppSettings {
+  geminiApiKey: string;
+  marketDataApiKey: string;
+  plaidClientId: string;
+  plaidSecret: string;
+}
+
+export interface Category {
+  id: string;
+  name: string;
+  subCategories: {
+    id: string;
+    name: string;
+  }[];
 }

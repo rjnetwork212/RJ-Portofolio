@@ -1,8 +1,7 @@
-import React from 'react';
-import { MOCK_CRYPTO_ASSETS, MOCK_STOCK_ASSETS } from '../constants';
+import React, { useState, useEffect } from 'react';
 import type { Asset } from '../types';
+import { formatCurrency } from '../utils/helpers';
 
-const formatCurrency = (value: number, minimumFractionDigits = 2) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits }).format(value);
 const formatMarketCap = (value: number) => {
     if (value >= 1e12) return `${(value / 1e12).toFixed(2)}T`;
     if (value >= 1e9) return `${(value / 1e9).toFixed(2)}B`;
@@ -10,12 +9,12 @@ const formatMarketCap = (value: number) => {
     return value.toString();
 };
 
-const AssetTable: React.FC<{ title: string, assets: Asset[] }> = ({ title, assets }) => (
-    <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800">
-        <h2 className="text-xl font-bold text-slate-100 mb-6">{title}</h2>
+const AssetTable: React.FC<{ title: string, assets: Asset[], isLoading: boolean, error: string | null }> = ({ title, assets, isLoading, error }) => (
+    <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-gray-200 dark:border-slate-800">
+        <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-6">{title}</h2>
         <div className="overflow-x-auto">
             <table className="w-full text-left">
-                <thead className="border-b border-slate-700 text-sm text-slate-400">
+                <thead className="border-b border-gray-200 dark:border-slate-700 text-sm text-slate-500 dark:text-slate-400">
                     <tr>
                         <th className="p-4">Asset</th>
                         <th className="p-4">Price</th>
@@ -26,19 +25,25 @@ const AssetTable: React.FC<{ title: string, assets: Asset[] }> = ({ title, asset
                     </tr>
                 </thead>
                 <tbody>
-                    {assets.map(asset => (
-                        <tr key={asset.id} className="border-b border-slate-800 last:border-0 hover:bg-slate-800/50">
-                            <td className="p-4 font-medium text-slate-200">
+                    {isLoading && (
+                        <tr><td colSpan={6} className="text-center p-4">Loading assets...</td></tr>
+                    )}
+                    {error && (
+                         <tr><td colSpan={6} className="text-center p-4 text-red-500">{error}</td></tr>
+                    )}
+                    {!isLoading && !error && assets.map(asset => (
+                        <tr key={asset.id} className="border-b border-gray-200 dark:border-slate-800 last:border-0 hover:bg-gray-50 dark:hover:bg-slate-800/50">
+                            <td className="p-4 font-medium text-slate-800 dark:text-slate-200">
                                 <div className="flex items-center">
                                     <img src={asset.logo} alt={asset.name} className="w-8 h-8 mr-4 rounded-full bg-white p-1" />
                                     <div>
                                         <span>{asset.name}</span>
-                                        <span className="text-slate-500 ml-2">{asset.symbol}</span>
+                                        <span className="text-slate-500 dark:text-slate-500 ml-2">{asset.symbol}</span>
                                     </div>
                                 </div>
                             </td>
                             <td className="p-4">{formatCurrency(asset.price)}</td>
-                            <td className={`p-4 font-semibold ${asset.change24h >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                            <td className={`p-4 font-semibold ${asset.change24h >= 0 ? 'text-green-500' : 'text-red-500'}`}>
                                 {asset.change24h.toFixed(2)}%
                             </td>
                             <td className="p-4">{asset.holdings}</td>
@@ -53,10 +58,45 @@ const AssetTable: React.FC<{ title: string, assets: Asset[] }> = ({ title, asset
 );
 
 const Portfolio: React.FC = () => {
+    const [cryptoAssets, setCryptoAssets] = useState<Asset[]>([]);
+    const [stockAssets, setStockAssets] = useState<Asset[]>([]);
+    const [loading, setLoading] = useState({ crypto: true, stocks: true });
+    const [error, setError] = useState({ crypto: null, stocks: null });
+
+    useEffect(() => {
+        const fetchAssets = async (assetType: 'crypto' | 'stocks') => {
+            try {
+                setLoading(prev => ({ ...prev, [assetType]: true }));
+                const res = await fetch(`/api/portfolio/${assetType}`);
+                if (!res.ok) throw new Error(`Failed to fetch ${assetType} assets`);
+                const data = await res.json();
+                if (assetType === 'crypto') setCryptoAssets(data);
+                else setStockAssets(data);
+            } catch (err: any) {
+                setError(prev => ({ ...prev, [assetType]: err.message }));
+            } finally {
+                setLoading(prev => ({ ...prev, [assetType]: false }));
+            }
+        };
+
+        fetchAssets('crypto');
+        fetchAssets('stocks');
+    }, []);
+
     return (
         <div className="space-y-8">
-            <AssetTable title="Cryptocurrency Assets" assets={MOCK_CRYPTO_ASSETS} />
-            <AssetTable title="Stock Assets" assets={MOCK_STOCK_ASSETS} />
+            <AssetTable 
+                title="Cryptocurrency Assets" 
+                assets={cryptoAssets} 
+                isLoading={loading.crypto} 
+                error={error.crypto} 
+            />
+            <AssetTable 
+                title="Stock Assets" 
+                assets={stockAssets} 
+                isLoading={loading.stocks} 
+                error={error.stocks} 
+            />
         </div>
     );
 };

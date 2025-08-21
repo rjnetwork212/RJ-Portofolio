@@ -1,5 +1,5 @@
 import React from 'react';
-import type { Asset, Transaction, FuturesTrade } from './types';
+import type { Invoice } from './types';
 
 // SVG Icons
 const HomeIcon = () => (
@@ -17,6 +17,11 @@ const TransactionsIcon = () => (
         <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
     </svg>
 );
+const BusinessIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+    </svg>
+);
 const TradingIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M8 7l4-4m0 0l4 4m-4-4v18" />
@@ -28,44 +33,29 @@ const AiIcon = () => (
     <path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
   </svg>
 );
+const SettingsIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+    </svg>
+);
+
 
 export const NAV_LINKS = [
   { name: 'Dashboard', path: '/', icon: <HomeIcon /> },
   { name: 'Portfolio', path: '/portfolio', icon: <PortfolioIcon /> },
   { name: 'Transactions', path: '/transactions', icon: <TransactionsIcon /> },
+  { name: 'Business', path: '/business', icon: <BusinessIcon /> },
   { name: 'Futures Trading', path: '/futures-trading', icon: <TradingIcon /> },
   { name: 'AI Assistant', path: '/ai-assistant', icon: <AiIcon /> },
+  { name: 'Settings', path: '/settings', icon: <SettingsIcon /> },
 ];
 
-// Mock Data
-export const MOCK_CRYPTO_ASSETS: Asset[] = [
-  { id: 'btc', name: 'Bitcoin', symbol: 'BTC', price: 68500.00, change24h: 2.5, marketCap: 1350000000000, holdings: 0.5, logo: 'https://img.icons8.com/fluency/48/bitcoin.png' },
-  { id: 'eth', name: 'Ethereum', symbol: 'ETH', price: 3500.00, change24h: -1.2, marketCap: 420000000000, holdings: 5, logo: 'https://img.icons8.com/fluency/48/ethereum.png' },
-  { id: 'sol', name: 'Solana', symbol: 'SOL', price: 170.00, change24h: 5.8, marketCap: 78000000000, holdings: 100, logo: 'https://img.icons8.com/fluency/48/solana.png' },
-];
-
-export const MOCK_STOCK_ASSETS: Asset[] = [
-  { id: 'aapl', name: 'Apple Inc.', symbol: 'AAPL', price: 210.50, change24h: 1.1, marketCap: 3220000000000, holdings: 50, logo: 'https://img.icons8.com/ios-filled/50/mac-os.png' },
-  { id: 'tsla', name: 'Tesla, Inc.', symbol: 'TSLA', price: 180.20, change24h: -2.3, marketCap: 575000000000, holdings: 25, logo: 'https://img.icons8.com/color/48/tesla-logo.png' },
-  { id: 'nvda', name: 'NVIDIA Corp', symbol: 'NVDA', price: 125.90, change24h: 3.5, marketCap: 3090000000000, holdings: 75, logo: 'https://img.icons8.com/ios-filled/50/nvidia.png' },
-];
-
-export const MOCK_TRANSACTIONS: Transaction[] = [
-    { id: '1', date: '2024-07-20', description: 'Monthly Salary', amount: 5000, category: 'Income', type: 'income' },
-    { id: '2', date: '2024-07-19', description: 'Groceries', amount: -150.75, category: 'Food', type: 'expense' },
-    { id: '3', date: '2024-07-18', description: 'Gasoline', amount: -55.20, category: 'Transport', type: 'expense' },
-    { id: '4', date: '2024-07-18', description: 'Cloud Server Bill', amount: -35.00, category: 'Utilities', type: 'expense' },
-    { id: '5', date: '2024-07-17', description: 'Freelance Project', amount: 750, category: 'Income', type: 'income' },
-    { id: '6', date: '2024-07-16', description: 'Dinner Out', amount: -85.50, category: 'Food', type: 'expense' },
-    { id: '7', date: '2024-07-15', description: 'Stock Dividend', amount: 120, category: 'Investment', type: 'income' },
-    { id: '8', date: '2024-07-15', description: 'Gym Membership', amount: -40.00, category: 'Health', type: 'expense' },
-];
-
-export const MOCK_FUTURES_TRADES: FuturesTrade[] = [
-    { id: 't1', pair: 'BTC/USDT', type: 'LONG', entryPrice: 65000, exitPrice: 68000, size: 0.1, pnl: 300, status: 'CLOSED', date: '2024-07-15' },
-    { id: 't2', pair: 'ETH/USDT', type: 'SHORT', entryPrice: 3600, exitPrice: 3500, size: 2, pnl: 200, status: 'CLOSED', date: '2024-07-16' },
-    { id: 't3', pair: 'SOL/USDT', type: 'LONG', entryPrice: 160, exitPrice: 155, size: 10, pnl: -50, status: 'CLOSED', date: '2024-07-17' },
-    { id: 't4', pair: 'BTC/USDT', type: 'SHORT', entryPrice: 69000, exitPrice: 69500, size: 0.2, pnl: -100, status: 'CLOSED', date: '2024-07-18' },
-    { id: 't5', pair: 'ETH/USDT', type: 'LONG', entryPrice: 3450, exitPrice: 3550, size: 3, pnl: 300, status: 'CLOSED', date: '2024-07-19' },
-    { id: 't6', pair: 'RNDR/USDT', type: 'LONG', entryPrice: 7.5, exitPrice: 0, size: 100, pnl: 0, status: 'OPEN', date: '2024-07-20' },
+export const MOCK_INVOICES: Invoice[] = [
+    { id: 'INV-001', client: 'Tech Solutions Inc.', dueDate: '2024-08-15', status: 'PAID', amount: 2500 },
+    { id: 'INV-002', client: 'Innovate LLC', dueDate: '2024-08-20', status: 'PENDING', amount: 5000 },
+    { id: 'INV-003', client: 'Creative Minds', dueDate: '2024-07-10', status: 'OVERDUE', amount: 1200 },
+    { id: 'INV-004', client: 'Tech Solutions Inc.', dueDate: '2024-08-01', status: 'PAID', amount: 3000 },
+    { id: 'INV-005', client: 'Web Creators', dueDate: '2024-08-25', status: 'PENDING', amount: 750 },
+    { id: 'INV-006', client: 'Innovate LLC', dueDate: '2024-07-25', status: 'PAID', amount: 4200 },
 ];
