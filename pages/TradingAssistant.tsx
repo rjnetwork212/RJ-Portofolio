@@ -1,6 +1,19 @@
 import React, { useState } from 'react';
 import { analyzeTradingPerformance } from '../services/geminiService';
 import type { TradeAnalysis, FuturesTrade } from '../types';
+import { supabase } from '../lib/supabaseClient';
+
+const supabaseToTrade = (item: any): FuturesTrade => ({
+  id: item.id,
+  pair: item.pair,
+  type: item.type,
+  entryPrice: item.entry_price,
+  exitPrice: item.exit_price,
+  size: item.size,
+  pnl: item.pnl,
+  status: item.status,
+  date: item.date,
+});
 
 const LoadingSpinner: React.FC = () => (
     <div className="flex justify-center items-center space-x-2">
@@ -64,9 +77,13 @@ const TradingAssistant: React.FC = () => {
         setAnalysis(null);
         try {
             // First, fetch the latest trades from the database
-            const res = await fetch('/api/futures-trades');
-            if (!res.ok) throw new Error('Could not fetch latest trades for analysis.');
-            const trades: FuturesTrade[] = await res.json();
+            const { data, error: fetchError } = await supabase
+                .from('futures_trades')
+                .select('*');
+                
+            if (fetchError) throw new Error('Could not fetch latest trades for analysis.');
+            
+            const trades: FuturesTrade[] = data.map(supabaseToTrade);
             
             // Then, send them for analysis
             const result = await analyzeTradingPerformance(trades);

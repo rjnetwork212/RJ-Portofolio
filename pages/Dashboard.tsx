@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import DashboardCard from '../components/DashboardCard';
-import type { Transaction, Budget, Goal, Asset } from '../types';
+import type { Transaction, Budget, Goal } from '../types';
 import { formatCurrency } from '../utils/helpers';
+import { supabase } from '../lib/supabaseClient';
 
 // NOTE: Portfolio, budget, and goal data are still mocked for simplicity.
-// In a real app, these would also be fetched from an API.
 const portfolioData = [
     { name: 'Jan', value: 10000 },
     { name: 'Feb', value: 12000 },
@@ -23,6 +23,16 @@ const MOCK_GOALS: Goal[] = [
     { id: 'g1', name: 'Emergency Fund', target: 10000, saved: 7500, emoji: '🛡️' },
     { id: 'g2', name: 'Vacation to Japan', target: 5000, saved: 1200, emoji: '✈️' },
 ];
+
+const supabaseToTransaction = (item: any): Transaction => ({
+  id: item.id,
+  date: item.date,
+  description: item.description,
+  amount: item.amount,
+  category: item.category,
+  subCategory: item.sub_category,
+  type: item.type,
+});
 
 const TransactionRow = ({ transaction }: { transaction: Transaction }) => (
     <div className="flex justify-between items-center py-3 border-b border-gray-200 dark:border-slate-800 last:border-b-0">
@@ -98,10 +108,12 @@ const Dashboard: React.FC = () => {
         const fetchTransactions = async () => {
             try {
                 setLoading(true);
-                const res = await fetch('/api/transactions');
-                if (!res.ok) throw new Error('Failed to fetch transactions');
-                const data: Transaction[] = await res.json();
-                setTransactions(data);
+                const { data, error } = await supabase
+                    .from('transactions')
+                    .select('*');
+
+                if (error) throw error;
+                setTransactions(data.map(supabaseToTransaction));
             } catch (err) {
                  if (err instanceof Error) setError(err.message);
                  else setError('An unknown error occurred');

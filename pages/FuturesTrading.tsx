@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import type { FuturesTrade } from '../types';
 import { formatCurrency, exportToCsv } from '../utils/helpers';
+import { supabase } from '../lib/supabaseClient';
 
 interface TradeModalProps {
   isOpen: boolean;
@@ -8,6 +9,29 @@ interface TradeModalProps {
   onSave: (trade: Omit<FuturesTrade, 'id' | 'pnl'>, id?: string) => Promise<void>;
   trade: FuturesTrade | null;
 }
+
+const supabaseToTrade = (item: any): FuturesTrade => ({
+  id: item.id,
+  pair: item.pair,
+  type: item.type,
+  entryPrice: item.entry_price,
+  exitPrice: item.exit_price,
+  size: item.size,
+  pnl: item.pnl,
+  status: item.status,
+  date: item.date,
+});
+
+const tradeToSupabase = (trade: Omit<FuturesTrade, 'id'>) => ({
+  pair: trade.pair,
+  type: trade.type,
+  entry_price: trade.entryPrice,
+  exit_price: trade.exitPrice,
+  size: trade.size,
+  pnl: trade.pnl,
+  status: trade.status,
+  date: trade.date,
+});
 
 const TradeModal: React.FC<TradeModalProps> = ({ isOpen, onClose, onSave, trade }) => {
     const [formData, setFormData] = useState<Omit<FuturesTrade, 'id' | 'pnl'>>({
@@ -104,10 +128,14 @@ const FuturesTrading: React.FC = () => {
      const fetchTrades = async () => {
         try {
             setLoading(true);
-            const res = await fetch('/api/futures-trades');
-            if (!res.ok) throw new Error('Failed to fetch trades');
-            const data: FuturesTrade[] = await res.json();
-            setTrades(data);
+            setError(null);
+            const { data, error } = await supabase
+                .from('futures_trades')
+                .select('*')
+                .order('date', { ascending: false });
+                
+            if (error) throw error;
+            setTrades(data.map(supabaseToTrade));
         } catch (err) {
              if (err instanceof Error) setError(err.message);
              else setError('An unknown error occurred');
@@ -121,7 +149,7 @@ const FuturesTrading: React.FC = () => {
     }, []);
 
     const stats = useMemo(() => {
-        const closedTrades = trades.filter(t => t.status === 'CLOSED');
+        const closedTrades = trades.filter(t => t.status === 'CLOSED' && t.pnl != null);
         const totalPnl = closedTrades.reduce((sum, t) => sum + t.pnl, 0);
         const winningTrades = closedTrades.filter(t => t.pnl > 0).length;
         const winRate = closedTrades.length > 0 ? (winningTrades / closedTrades.length) * 100 : 0;
@@ -133,30 +161,39 @@ const FuturesTrading: React.FC = () => {
     };
 
     const handleSaveTrade = async (tradeData: Omit<FuturesTrade, 'id' | 'pnl'>, id?: string) => {
-        const method = id ? 'PUT' : 'POST';
-        const url = id ? `/api/futures-trades/${id}` : '/api/futures-trades';
-        
         try {
-            const response = await fetch(url, {
-                method,
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(tradeData),
-            });
-            if (!response.ok) throw new Error('Failed to save trade');
+            let calculatedPnl = null;
+            if (tradeData.status === 'CLOSED' && tradeData.exitPrice > 0) {
+                const pnlValue = (tradeData.exitPrice - tradeData.entryPrice) * tradeData.size;
+                calculatedPnl = tradeData.type === 'LONG' ? pnlValue : -pnlValue;
+            }
+
+            const tradeWithPnl = { ...tradeData, pnl: calculatedPnl };
+            const supabaseData = tradeToSupabase(tradeWithPnl);
+            
+            let error;
+            if (id) {
+                ({ error } = await supabase.from('futures_trades').update(supabaseData).eq('id', id));
+            } else {
+                ({ error } = await supabase.from('futures_trades').insert(supabaseData));
+            }
+            if (error) throw error;
             await fetchTrades();
         } catch (err) {
             console.error(err);
+            if(err instanceof Error) alert(`Error saving trade: ${err.message}`);
         }
     };
     
     const handleDeleteTrade = async (id: string) => {
         if (window.confirm("Are you sure you want to delete this trade log?")) {
             try {
-                const response = await fetch(`/api/futures-trades/${id}`, { method: 'DELETE' });
-                if (!response.ok) throw new Error('Failed to delete trade');
+                const { error } = await supabase.from('futures_trades').delete().eq('id', id);
+                if (error) throw error;
                 await fetchTrades();
             } catch (err) {
                 console.error(err);
+                if(err instanceof Error) alert(`Error deleting trade: ${err.message}`);
             }
         }
     };
@@ -239,7 +276,7 @@ const FuturesTrading: React.FC = () => {
                                             </span>
                                         </td>
                                         <td className="p-4">{formatCurrency(trade.entryPrice, trade.entryPrice < 100 ? 4 : 2)}</td>
-                                        <td className="p-4">{trade.status === 'CLOSED' ? formatCurrency(trade.exitPrice, trade.exitPrice < 100 ? 4 : 2) : '-'}</td>
+                                        <td className="p-4">{trade.status === 'CLOSED' && trade.exitPrice ? formatCurrency(trade.exitPrice, trade.exitPrice < 100 ? 4 : 2) : '-'}</td>
                                         <td className="p-4">{trade.size}</td>
                                         <td className="p-4">
                                             <span className={`font-medium ${trade.status === 'OPEN' ? 'text-yellow-500' : 'text-slate-500 dark:text-slate-400'}`}>
@@ -247,7 +284,7 @@ const FuturesTrading: React.FC = () => {
                                             </span>
                                         </td>
                                         <td className={`p-4 text-right font-semibold ${trade.pnl > 0 ? 'text-green-500' : trade.pnl < 0 ? 'text-red-500' : 'text-slate-500 dark:text-slate-400'}`}>
-                                            {trade.status === 'CLOSED' ? formatCurrency(trade.pnl) : '-'}
+                                            {trade.status === 'CLOSED' && trade.pnl != null ? formatCurrency(trade.pnl) : '-'}
                                         </td>
                                         <td className="p-4 text-center">
                                             <button onClick={() => handleEditTrade(trade)} className="text-slate-500 hover:text-cyan-500 p-1">✏️</button>

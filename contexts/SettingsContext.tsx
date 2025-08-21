@@ -1,5 +1,6 @@
 import React, { createContext, useState, useEffect } from 'react';
 import type { AppSettings } from '../types';
+import { supabase } from '../lib/supabaseClient';
 
 interface SettingsContextType {
     settings: AppSettings | null;
@@ -23,11 +24,18 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const fetchSettings = async () => {
         try {
             setLoading(true);
-            const response = await fetch('/api/settings');
-            if (!response.ok) throw new Error('Failed to fetch settings.');
-            const data = await response.json();
-            setSettings(data);
             setError(null);
+            
+            const { data, error } = await supabase
+                .from('app_settings')
+                .select('settings')
+                .limit(1)
+                .single();
+
+            if (error) throw error;
+            
+            setSettings(data.settings);
+
         } catch (err) {
             if (err instanceof Error) setError(err.message);
             else setError('An unknown error occurred');
@@ -44,17 +52,16 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     const updateSettings = async (newSettings: AppSettings) => {
         try {
-            const response = await fetch('/api/settings', {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(newSettings),
-            });
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.message || 'Failed to update settings');
-            }
-            const updatedData = await response.json();
-            setSettings(updatedData);
+            const { data, error } = await supabase
+                .from('app_settings')
+                .update({ settings: newSettings })
+                .eq('id', 1) // Assuming settings are stored in a single row with id=1
+                .select()
+                .single();
+
+            if (error) throw error;
+
+            setSettings(data.settings);
         } catch (err) {
              if (err instanceof Error) throw err;
              throw new Error('An unknown error occurred while updating settings.');

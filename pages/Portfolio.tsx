@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import type { Asset } from '../types';
 import { formatCurrency } from '../utils/helpers';
+import { supabase } from '../lib/supabaseClient';
 
 const formatMarketCap = (value: number) => {
     if (value >= 1e12) return `${(value / 1e12).toFixed(2)}T`;
@@ -8,6 +9,17 @@ const formatMarketCap = (value: number) => {
     if (value >= 1e6) return `${(value / 1e6).toFixed(2)}M`;
     return value.toString();
 };
+
+const supabaseToAsset = (item: any): Asset => ({
+  id: item.id,
+  name: item.name,
+  symbol: item.symbol,
+  price: item.price,
+  change24h: item.change_24h,
+  marketCap: item.market_cap,
+  holdings: item.holdings,
+  logo: item.logo,
+});
 
 const AssetTable: React.FC<{ title: string, assets: Asset[], isLoading: boolean, error: string | null }> = ({ title, assets, isLoading, error }) => (
     <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-gray-200 dark:border-slate-800">
@@ -61,17 +73,21 @@ const Portfolio: React.FC = () => {
     const [cryptoAssets, setCryptoAssets] = useState<Asset[]>([]);
     const [stockAssets, setStockAssets] = useState<Asset[]>([]);
     const [loading, setLoading] = useState({ crypto: true, stocks: true });
-    const [error, setError] = useState({ crypto: null, stocks: null });
+    const [error, setError] = useState<{ crypto: string | null, stocks: string | null }>({ crypto: null, stocks: null });
 
     useEffect(() => {
         const fetchAssets = async (assetType: 'crypto' | 'stocks') => {
+            const tableName = assetType === 'crypto' ? 'crypto_assets' : 'stock_assets';
             try {
                 setLoading(prev => ({ ...prev, [assetType]: true }));
-                const res = await fetch(`/api/portfolio/${assetType}`);
-                if (!res.ok) throw new Error(`Failed to fetch ${assetType} assets`);
-                const data = await res.json();
-                if (assetType === 'crypto') setCryptoAssets(data);
-                else setStockAssets(data);
+
+                const { data, error } = await supabase.from(tableName).select('*');
+                if (error) throw error;
+
+                const mappedData = data.map(supabaseToAsset);
+                if (assetType === 'crypto') setCryptoAssets(mappedData);
+                else setStockAssets(mappedData);
+
             } catch (err: any) {
                 setError(prev => ({ ...prev, [assetType]: err.message }));
             } finally {

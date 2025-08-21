@@ -3,6 +3,7 @@ import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from 'recharts';
 import type { Transaction } from '../types';
 import { CategoryContext } from '../contexts/CategoryContext';
 import { formatCurrency, exportToCsv } from '../utils/helpers';
+import { supabase } from '../lib/supabaseClient';
 
 const COLORS = ['#0ea5e9', '#84cc16', '#ef4444', '#f97316', '#8b5cf6', '#334155'];
 
@@ -12,6 +13,25 @@ interface TransactionModalProps {
   onSave: (transaction: Omit<Transaction, 'id'>, id?: string) => Promise<void>;
   transaction: Transaction | null;
 }
+
+const supabaseToTransaction = (item: any): Transaction => ({
+  id: item.id,
+  date: item.date,
+  description: item.description,
+  amount: item.amount,
+  category: item.category,
+  subCategory: item.sub_category,
+  type: item.type,
+});
+
+const transactionToSupabase = (transaction: Omit<Transaction, 'id'>) => ({
+  date: transaction.date,
+  description: transaction.description,
+  amount: transaction.amount,
+  category: transaction.category,
+  sub_category: transaction.subCategory,
+  type: transaction.type,
+});
 
 const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onClose, onSave, transaction }) => {
     const { categories } = useContext(CategoryContext);
@@ -119,10 +139,14 @@ const Transactions: React.FC = () => {
     const fetchTransactions = async () => {
         try {
             setLoading(true);
-            const res = await fetch('/api/transactions');
-            if (!res.ok) throw new Error('Failed to fetch transactions');
-            const data: Transaction[] = await res.json();
-            setTransactions(data);
+            setError(null);
+            const { data, error } = await supabase
+              .from('transactions')
+              .select('*')
+              .order('date', { ascending: false });
+
+            if (error) throw error;
+            setTransactions(data.map(supabaseToTransaction));
         } catch (err) {
              if (err instanceof Error) setError(err.message);
              else setError('An unknown error occurred');
@@ -157,25 +181,26 @@ const Transactions: React.FC = () => {
     };
 
     const handleSaveTransaction = async (transactionData: Omit<Transaction, 'id'>, id?: string) => {
-        const method = id ? 'PUT' : 'POST';
-        const url = id ? `/api/transactions/${id}` : '/api/transactions';
-        
         try {
-            const response = await fetch(url, {
-                method,
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(transactionData),
-            });
-            if (!response.ok) throw new Error('Failed to save transaction');
+            const supabaseData = transactionToSupabase(transactionData);
+            let error;
+            if (id) {
+                // Update
+                ({ error } = await supabase.from('transactions').update(supabaseData).eq('id', id));
+            } else {
+                // Insert
+                ({ error } = await supabase.from('transactions').insert(supabaseData));
+            }
+            if (error) throw error;
             await fetchTransactions(); // Refresh data
         } catch (error) {
             console.error(error);
-            // You could show an error notification to the user
+            if (error instanceof Error) alert(`Error: ${error.message}`);
         }
     };
 
     const handleEdit = (transaction: Transaction) => {
-        setEditingTransaction(transaction);
+        setEditingTransaction({ ...transaction, amount: Math.abs(transaction.amount) });
         setIsModalOpen(true);
     };
 
@@ -187,12 +212,12 @@ const Transactions: React.FC = () => {
     const handleDelete = async (id: string) => {
         if (window.confirm("Are you sure you want to delete this transaction?")) {
             try {
-                const response = await fetch(`/api/transactions/${id}`, { method: 'DELETE' });
-                if (!response.ok) throw new Error('Failed to delete transaction');
+                const { error } = await supabase.from('transactions').delete().eq('id', id);
+                if (error) throw error;
                 await fetchTransactions(); // Refresh data
             } catch (error) {
                 console.error(error);
-                 // You could show an error notification to the user
+                if (error instanceof Error) alert(`Error: ${error.message}`);
             }
         }
     };

@@ -1,5 +1,6 @@
 import React, { createContext, useState, useEffect } from 'react';
 import type { Category } from '../types';
+import { supabase } from '../lib/supabaseClient';
 
 interface CategoryContextType {
     categories: Category[];
@@ -35,11 +36,27 @@ export const CategoryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const fetchCategories = async () => {
         try {
             setLoading(true);
-            const response = await fetch('/api/categories');
-            if (!response.ok) throw new Error('Failed to fetch categories.');
-            const data = await response.json();
-            setCategories(data);
             setError(null);
+            // Use Supabase's relational query feature.
+            // This assumes a foreign key relationship is set up in Supabase
+            // from sub_categories.category_id to categories.id
+            const { data, error } = await supabase
+                .from('categories')
+                .select('id, name, subCategories:sub_categories(id, name)');
+
+            if (error) {
+                if (error.message.includes('relation') && error.message.includes('does not exist')) {
+                     throw new Error("Database table not found. Please check your Supabase schema.");
+                }
+                 if (error.message.includes("could not find a relationship")) {
+                    throw new Error("Supabase relationship between categories and sub_categories might be missing. Please check your table foreign keys.");
+                }
+                throw error;
+            }
+            
+            // The data from Supabase should match the Category type structure now
+            setCategories(data as Category[]);
+
         } catch (err) {
             if (err instanceof Error) setError(err.message);
             else setError('An unknown error occurred');
@@ -52,46 +69,39 @@ export const CategoryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         fetchCategories();
     }, []);
 
-    const apiRequest = async (url: string, method: string, body?: object) => {
-        const response = await fetch(url, {
-            method,
-            headers: { 'Content-Type': 'application/json' },
-            body: body ? JSON.stringify(body) : undefined,
-        });
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.message || `Failed to ${method} data at ${url}`);
-        }
-        return response.json();
-    };
-
     const addCategory = async (name: string) => {
-        await apiRequest('/api/categories', 'POST', { name });
+        const { error } = await supabase.from('categories').insert({ name });
+        if (error) throw error;
         await fetchCategories();
     };
 
     const editCategory = async (id: string, newName: string) => {
-        await apiRequest(`/api/categories/${id}`, 'PUT', { name: newName });
+        const { error } = await supabase.from('categories').update({ name: newName }).eq('id', id);
+        if (error) throw error;
         await fetchCategories();
     };
     
     const deleteCategory = async (id: string) => {
-        await apiRequest(`/api/categories/${id}`, 'DELETE');
+        const { error } = await supabase.from('categories').delete().eq('id', id);
+        if (error) throw error;
         await fetchCategories();
     };
 
     const addSubCategory = async (categoryId: string, subCategoryName: string) => {
-        await apiRequest(`/api/categories/${categoryId}/subcategories`, 'POST', { name: subCategoryName });
+        const { error } = await supabase.from('sub_categories').insert({ name: subCategoryName, category_id: categoryId });
+        if (error) throw error;
         await fetchCategories();
     };
 
     const editSubCategory = async (categoryId: string, subCategoryId: string, newName: string) => {
-        await apiRequest(`/api/categories/${categoryId}/subcategories/${subCategoryId}`, 'PUT', { name: newName });
+        const { error } = await supabase.from('sub_categories').update({ name: newName }).eq('id', subCategoryId);
+        if (error) throw error;
         await fetchCategories();
     };
 
     const deleteSubCategory = async (categoryId: string, subCategoryId: string) => {
-        await apiRequest(`/api/categories/${categoryId}/subcategories/${subCategoryId}`, 'DELETE');
+        const { error } = await supabase.from('sub_categories').delete().eq('id', subCategoryId);
+        if (error) throw error;
         await fetchCategories();
     };
 

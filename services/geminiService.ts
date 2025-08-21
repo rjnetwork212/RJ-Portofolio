@@ -1,4 +1,5 @@
 import type { FuturesTrade, TradeAnalysis } from '../types';
+import { supabase } from '../lib/supabaseClient';
 
 export const analyzeTradingPerformance = async (trades: FuturesTrade[]): Promise<TradeAnalysis> => {
   const closedTrades = trades.filter(t => t.status === 'CLOSED');
@@ -7,24 +8,20 @@ export const analyzeTradingPerformance = async (trades: FuturesTrade[]): Promise
   }
 
   try {
-    const response = await fetch('/api/analyze-trades', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ trades: closedTrades }),
+    // Invoke a Supabase Edge Function instead of a Vercel API route
+    const { data, error } = await supabase.functions.invoke('analyze-trades', {
+      body: { trades: closedTrades },
     });
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || "Failed to get analysis from AI.");
+    if (error) {
+      throw new Error(error.message || "Failed to get analysis from AI Edge Function.");
     }
 
-    const analysisResult = await response.json();
-    return analysisResult as TradeAnalysis;
+    // The data returned from the function is the analysis result
+    return data as TradeAnalysis;
 
   } catch (error) {
-    console.error("Error fetching analysis:", error);
+    console.error("Error invoking Supabase function:", error);
     if (error instanceof Error) {
         throw new Error(error.message);
     }
