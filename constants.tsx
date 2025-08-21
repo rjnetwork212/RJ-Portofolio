@@ -34,22 +34,28 @@ const SettingsIcon = () => (
         <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
     </svg>
 );
+const BusinessIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+    </svg>
+);
 
 
 export const NAV_LINKS = [
   { name: 'Dashboard', path: '/', icon: <HomeIcon /> },
   { name: 'Portfolio', path: '/portfolio', icon: <PortfolioIcon /> },
   { name: 'Transactions', path: '/transactions', icon: <TransactionsIcon /> },
+  { name: 'Business', path: '/business', icon: <BusinessIcon /> },
   { name: 'Futures Trading', path: '/futures-trading', icon: <TradingIcon /> },
   { name: 'AI Assistant', path: '/ai-assistant', icon: <AiIcon /> },
   { name: 'Settings', path: '/settings', icon: <SettingsIcon /> },
 ];
 
 export const MOCK_INVOICES: Invoice[] = [
-    { id: 'INV-001', client: 'Tech Solutions Inc.', dueDate: '2024-08-15', status: 'PAID', amount: 2500 },
-    { id: 'INV-002', client: 'Innovate LLC', dueDate: '2024-08-20', status: 'PENDING', amount: 5000 },
-    { id: 'INV-003', client: 'Creative Minds', dueDate: '2024-07-10', status: 'OVERDUE', amount: 1200 },
-    { id: 'INV-004', client: 'Tech Solutions Inc.', dueDate: '2024-08-01', status: 'PAID', amount: 3000 },
-    { id: 'INV-005', client: 'Web Creators', dueDate: '2024-08-25', status: 'PENDING', amount: 750 },
-    { id: 'INV-006', client: 'Innovate LLC', dueDate: '2024-07-25', status: 'PAID', amount: 4200 },
+  { id: 'INV-001', client: 'Tech Corp', dueDate: '2024-08-01', status: 'PAID', amount: 2500 },
+  { id: 'INV-002', client: 'Innovate LLC', dueDate: '2024-08-15', status: 'PENDING', amount: 5000 },
+  { id: 'INV-003', client: 'Design Studio', dueDate: '2024-07-20', status: 'PAID', amount: 1200 },
+  { id: 'INV-004', client: 'Marketing Agency', dueDate: '2024-06-30', status: 'OVERDUE', amount: 3000 },
+  { id: 'INV-005', client: 'Innovate LLC', dueDate: '2024-09-01', status: 'PENDING', amount: 4500 },
+  { id: 'INV-006', client: 'Web Solutions', dueDate: '2024-07-10', status: 'OVERDUE', amount: 1800 },
 ];

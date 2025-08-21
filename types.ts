@@ -48,14 +48,6 @@ export interface TradeAnalysis {
   };
 }
 
-export interface Invoice {
-  id: string;
-  client: string;
-  dueDate: string;
-  status: 'PAID' | 'PENDING' | 'OVERDUE';
-  amount: number;
-}
-
 export interface Budget {
   id: string;
   category: string;
@@ -85,4 +77,12 @@ export interface Category {
     id: string;
     name: string;
   }[];
+}
+
+export interface Invoice {
+  id: string;
+  client: string;
+  dueDate: string;
+  status: 'PAID' | 'PENDING' | 'OVERDUE';
+  amount: number;
 }
