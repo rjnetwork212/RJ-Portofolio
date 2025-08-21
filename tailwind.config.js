@@ -2,9 +2,8 @@
 export default {
   content: [
     "./index.html",
-    "./{components,pages,contexts,services,utils}/**/*.{js,ts,jsx,tsx}",
-    "./App.tsx",
-    "./index.tsx"
+    "./{App,index}.tsx",
+    "./{components,contexts,lib,pages,services,utils}/**/*.{ts,tsx}",
   ],
   darkMode: 'class',
   theme: {

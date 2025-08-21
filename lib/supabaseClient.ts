@@ -1,15 +1,15 @@
 import { createClient } from '@supabase/supabase-js';
-import type { Database } from '../types_db'; // Assuming you generate types from your schema
 
-// IMPORTANT: Replace with your actual Supabase URL and Anon Key
-const supabaseUrl = 'https://ynwyielsercktfvzqbof.supabase.co'; // e.g., 'https://your-project-id.supabase.co'
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inlud3lpZWxzZXJja3RmdnpxYm9mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU4MTMyOTksImV4cCI6MjA3MTM4OTI5OX0.nFGnCBTUNZa4xCQEvwkhGIEKR7YKmhrzKLsrPlIX1So';
+// Menggunakan environment variables untuk kredensial Supabase.
+// Ini akan dibaca dari Environment Variables di pengaturan Vercel Anda saat di-deploy.
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.error(
-    'Supabase URL and Anon Key are required. Please update lib/supabaseClient.ts'
+  throw new Error(
+    'Supabase URL and Anon Key are required. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your Vercel environment variables.'
   );
 }
 
-// Create and export the Supabase client
+// Membuat dan mengekspor klien Supabase
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
