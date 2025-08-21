@@ -5,7 +5,6 @@ import Header from './components/layout/Header';
 import Dashboard from './pages/Dashboard';
 import Portfolio from './pages/Portfolio';
 import Transactions from './pages/Transactions';
-import Business from './pages/Business';
 import FuturesTrading from './pages/FuturesTrading';
 import TradingAssistant from './pages/TradingAssistant';
 import Settings from './pages/Settings';
@@ -60,7 +59,6 @@ const MainContent: React.FC<MainContentProps> = ({ toggleTheme, currentTheme }) 
           <Route path="/" element={<Dashboard />} />
           <Route path="/portfolio" element={<Portfolio />} />
           <Route path="/transactions" element={<Transactions />} />
-          <Route path="/business" element={<Business />} />
           <Route path="/futures-trading" element={<FuturesTrading />} />
           <Route path="/ai-assistant" element={<TradingAssistant />} />
           <Route path="/settings" element={<Settings />} />

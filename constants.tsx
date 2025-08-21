@@ -17,11 +17,6 @@ const TransactionsIcon = () => (
         <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
     </svg>
 );
-const BusinessIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-    </svg>
-);
 const TradingIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M8 7l4-4m0 0l4 4m-4-4v18" />
@@ -45,7 +40,6 @@ export const NAV_LINKS = [
   { name: 'Dashboard', path: '/', icon: <HomeIcon /> },
   { name: 'Portfolio', path: '/portfolio', icon: <PortfolioIcon /> },
   { name: 'Transactions', path: '/transactions', icon: <TransactionsIcon /> },
-  { name: 'Business', path: '/business', icon: <BusinessIcon /> },
   { name: 'Futures Trading', path: '/futures-trading', icon: <TradingIcon /> },
   { name: 'AI Assistant', path: '/ai-assistant', icon: <AiIcon /> },
   { name: 'Settings', path: '/settings', icon: <SettingsIcon /> },
