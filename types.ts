@@ -63,14 +63,6 @@ export interface Goal {
   emoji: string;
 }
 
-export interface Invoice {
-  id: string;
-  client: string;
-  dueDate: string;
-  status: 'PAID' | 'PENDING' | 'OVERDUE';
-  amount: number;
-}
-
 export interface AppSettings {
   geminiApiKey: string;
   marketDataApiKey: string;
