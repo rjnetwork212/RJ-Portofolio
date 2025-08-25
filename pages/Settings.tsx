@@ -306,10 +306,15 @@ const ExchangeConnections: React.FC = () => {
             setError(null);
             const { data, error } = await supabase.from('exchange_connections').select('*');
             if (error) throw error;
-            setConnections(data);
-        } catch (err) {
-            if (err instanceof Error) setError(err.message);
-            else setError('An unknown error occurred');
+            setConnections(data || []);
+        } catch (err: any) {
+            if (err && err.message && (err.code === '42P01' || err.message.includes('does not exist'))) {
+                setError('Database table "exchange_connections" not found. Please create it in your Supabase project.');
+            } else if (err && err.message) {
+                setError(err.message);
+            } else {
+                setError('An unknown error occurred');
+            }
         } finally {
             setLoading(false);
         }
