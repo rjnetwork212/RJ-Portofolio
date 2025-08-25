@@ -20,14 +20,14 @@ declare const Deno: {
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
 serve(async (req) => {
   // Ini diperlukan untuk menangani permintaan 'OPTIONS' preflight dari browser.
-  // Mengembalikan 204 No Content adalah praktik standar yang kuat untuk ini.
+  // Mengembalikan 200 OK dengan body sederhana adalah metode yang paling andal.
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders, status: 204 });
+    return new Response('ok', { headers: corsHeaders, status: 200 });
   }
 
   try {
