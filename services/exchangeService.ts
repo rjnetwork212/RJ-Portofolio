@@ -11,7 +11,11 @@ import { supabase } from '../lib/supabaseClient';
  * 3. Memperbarui tabel 'crypto_assets' dengan kepemilikan yang sebenarnya.
  */
 export const syncExchangeData = async (): Promise<{ message: string }> => {
-  const { data, error } = await supabase.functions.invoke('sync-exchanges');
+  // Menambahkan body kosong memastikan header Content-Type diatur dengan benar,
+  // yang sangat penting untuk permintaan preflight CORS yang berhasil.
+  const { data, error } = await supabase.functions.invoke('sync-exchanges', {
+    body: {},
+  });
 
   if (error) {
     // Error CORS dari `invoke` sering kali muncul sebagai TypeError umum di browser.

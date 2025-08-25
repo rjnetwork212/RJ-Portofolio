@@ -25,8 +25,9 @@ const corsHeaders = {
 
 serve(async (req) => {
   // Ini diperlukan untuk menangani permintaan 'OPTIONS' preflight dari browser.
+  // Mengembalikan 204 No Content adalah praktik standar yang kuat untuk ini.
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
+    return new Response(null, { headers: corsHeaders, status: 204 });
   }
 
   try {
