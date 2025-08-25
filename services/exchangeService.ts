@@ -14,6 +14,10 @@ export const syncExchangeData = async (): Promise<{ message: string }> => {
   const { data, error } = await supabase.functions.invoke('sync-exchanges');
 
   if (error) {
+    // Error CORS dari `invoke` sering kali muncul sebagai TypeError umum di browser.
+    if (error instanceof TypeError && error.message.toLowerCase().includes('failed to fetch')) {
+        throw new Error('CORS policy error. Please ensure your Supabase Edge Function includes the correct CORS headers.');
+    }
     throw new Error(error.message || "Failed to sync exchange data.");
   }
 
