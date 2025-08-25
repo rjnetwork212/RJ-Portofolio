@@ -12,42 +12,58 @@ const formatMarketCap = (value: number) => {
 };
 
 const CorsErrorHelp: React.FC<{ onRetry: () => void }> = ({ onRetry }) => {
-    const [copied, setCopied] = useState(false);
-    const cliCommand = 'supabase functions deploy sync-exchanges';
+    const [copiedCommand, setCopiedCommand] = useState('');
+    const deployCommand = 'npx supabase functions deploy sync-exchanges';
 
-    const copyToClipboard = () => {
-        navigator.clipboard.writeText(cliCommand).then(() => {
-            setCopied(true);
-            setTimeout(() => setCopied(false), 2000);
+    const copyToClipboard = (command: string) => {
+        navigator.clipboard.writeText(command).then(() => {
+            setCopiedCommand(command);
+            setTimeout(() => setCopiedCommand(''), 2500);
         });
     };
 
+    const CommandBox: React.FC<{ command: string }> = ({ command }) => (
+        <div className="relative my-2">
+            <pre className="bg-slate-800 text-slate-200 p-3 pr-20 rounded-md overflow-x-auto text-xs">
+                <code>{command}</code>
+            </pre>
+            <button
+                onClick={() => copyToClipboard(command)}
+                className="absolute top-1/2 right-2 -translate-y-1/2 bg-slate-600 hover:bg-slate-500 text-white px-3 py-1 rounded text-xs font-semibold"
+            >
+                {copiedCommand === command ? 'Copied!' : 'Copy'}
+            </button>
+        </div>
+    );
+
     return (
         <div className="bg-red-500/10 border-l-4 border-red-500 text-red-800 dark:text-red-300 p-4 rounded-r-lg" role="alert">
-            <p className="font-bold">Action Required: Deploy Your Edge Function</p>
+            <p className="font-bold text-lg">Sync Failed: Let's Fix It!</p>
             <p className="mt-2 text-sm">
-                The sync feature failed because of a network error, which is almost always a CORS (Cross-Origin Resource Sharing) issue.
+                This is a common one-time setup step. The sync failed because the app's backend code (a Supabase Edge Function) hasn't been deployed yet.
             </p>
-            <p className="mt-2 text-sm">
-                This happens when the backend code in <code>/supabase/functions/sync-exchanges</code> hasn't been deployed to Supabase yet.
+            <p className="mt-2 text-sm font-semibold">
+                Please follow these steps in your project's terminal:
             </p>
-            <div className="my-4">
-                <label className="block text-xs font-semibold mb-1">Run this command in your project terminal:</label>
-                <div className="relative">
-                    <pre className="bg-slate-800 text-slate-200 p-3 pr-20 rounded-md overflow-x-auto text-xs">
-                        <code>{cliCommand}</code>
-                    </pre>
-                    <button 
-                        onClick={copyToClipboard} 
-                        className="absolute top-1/2 right-2 -translate-y-1/2 bg-slate-600 hover:bg-slate-500 text-white px-3 py-1 rounded text-xs font-semibold"
-                    >
-                        {copied ? 'Copied!' : 'Copy'}
-                    </button>
+            <div className="mt-4 space-y-4 text-sm">
+                <div>
+                    <p><strong>Step 1: Log in to Supabase</strong> (if you haven't already)</p>
+                    <CommandBox command="npx supabase login" />
+                </div>
+                <div>
+                    <p><strong>Step 2: Link your project</strong> (find your <code className="text-xs bg-red-200 dark:bg-red-900/50 p-1 rounded">project-ref</code> in your Supabase dashboard URL)</p>
+                    <CommandBox command="npx supabase link --project-ref <your-project-ref>" />
+                </div>
+                <div>
+                    <p><strong>Step 3: Deploy the function</strong></p>
+                    <CommandBox command={deployCommand} />
                 </div>
             </div>
-             <button onClick={onRetry} className="bg-cyan-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-cyan-600 transition-colors text-sm">
-                I've deployed the function, Retry Sync
-            </button>
+            <div className="mt-6">
+                <button onClick={onRetry} className="bg-cyan-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-cyan-600 transition-colors text-sm">
+                    I've deployed the function, Retry Sync
+                </button>
+            </div>
         </div>
     );
 };
