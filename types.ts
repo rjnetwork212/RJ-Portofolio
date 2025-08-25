@@ -78,3 +78,11 @@ export interface Category {
     name: string;
   }[];
 }
+
+export interface ExchangeConnection {
+  id: string;
+  exchange_name: string;
+  nickname: string;
+  api_key: string;
+  api_secret: string;
+}

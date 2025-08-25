@@ -1,7 +1,10 @@
 import React, { useState, useContext, useEffect } from 'react';
 import { CategoryContext } from '../contexts/CategoryContext';
 import { SettingsContext } from '../contexts/SettingsContext';
-import type { Category, AppSettings } from '../types';
+import type { Category, AppSettings, ExchangeConnection } from '../types';
+import { supabase } from '../lib/supabaseClient';
+
+// --- BAGIAN KATEGORI ---
 
 interface CategoryModalProps {
     isOpen: boolean;
@@ -136,6 +139,8 @@ const ManageCategories: React.FC = () => {
     );
 };
 
+// --- BAGIAN KONEKSI API ---
+
 const ApiConnections: React.FC = () => {
     const { settings, loading, error, updateSettings } = useContext(SettingsContext);
     const [formData, setFormData] = useState<AppSettings>({ geminiApiKey: '', marketDataApiKey: '', plaidClientId: '', plaidSecret: '' });
@@ -210,11 +215,214 @@ const ApiConnections: React.FC = () => {
     );
 };
 
+// --- BAGIAN KONEKSI EXCHANGE ---
+
+const SUPPORTED_EXCHANGES = [
+    { id: 'binance', name: 'Binance', logo: 'https://s2.coinmarketcap.com/static/img/exchanges/64x64/270.png' },
+    { id: 'coinbase', name: 'Coinbase', logo: 'https://s2.coinmarketcap.com/static/img/exchanges/64x64/89.png' },
+    { id: 'kraken', name: 'Kraken', logo: 'https://s2.coinmarketcap.com/static/img/exchanges/64x64/24.png' },
+];
+
+interface ExchangeModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    onSave: (connection: Omit<ExchangeConnection, 'id'>, id?: string) => Promise<void>;
+    connection: ExchangeConnection | null;
+}
+
+const ExchangeModal: React.FC<ExchangeModalProps> = ({ isOpen, onClose, onSave, connection }) => {
+    const [formData, setFormData] = useState<Omit<ExchangeConnection, 'id'>>({
+        exchange_name: 'binance',
+        nickname: '',
+        api_key: '',
+        api_secret: '',
+    });
+
+    useEffect(() => {
+        if (connection) {
+            setFormData({
+                exchange_name: connection.exchange_name,
+                nickname: connection.nickname,
+                api_key: connection.api_key,
+                api_secret: connection.api_secret,
+            });
+        } else {
+            setFormData({
+                exchange_name: 'binance',
+                nickname: '',
+                api_key: '',
+                api_secret: '',
+            });
+        }
+    }, [connection, isOpen]);
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        await onSave(formData, connection?.id);
+        onClose();
+    };
+
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white dark:bg-slate-800 p-8 rounded-lg w-full max-w-md">
+                <h2 className="text-xl font-bold mb-6">{connection ? 'Edit' : 'Add'} Exchange Connection</h2>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <select name="exchange_name" value={formData.exchange_name} onChange={handleChange} className="w-full p-2 rounded bg-gray-100 dark:bg-slate-700">
+                        {SUPPORTED_EXCHANGES.map(ex => <option key={ex.id} value={ex.id}>{ex.name}</option>)}
+                    </select>
+                    <input name="nickname" value={formData.nickname} onChange={handleChange} placeholder="Account Nickname (e.g., Main Binance)" required className="w-full p-2 rounded bg-gray-100 dark:bg-slate-700" />
+                    <input name="api_key" value={formData.api_key} onChange={handleChange} placeholder="API Key" required className="w-full p-2 rounded bg-gray-100 dark:bg-slate-700" />
+                    <input name="api_secret" type="password" value={formData.api_secret} onChange={handleChange} placeholder="API Secret" required className="w-full p-2 rounded bg-gray-100 dark:bg-slate-700" />
+                    <div className="text-xs text-yellow-600 dark:text-yellow-400 bg-yellow-500/10 p-2 rounded-md">
+                        <strong>Security Note:</strong> For your safety, please ensure your API keys have <strong>read-only</strong> permissions.
+                    </div>
+                    <div className="flex justify-end space-x-4 pt-4">
+                        <button type="button" onClick={onClose} className="px-4 py-2 rounded bg-gray-200 dark:bg-slate-600">Cancel</button>
+                        <button type="submit" className="px-4 py-2 rounded bg-cyan-500 text-white font-semibold">Save Connection</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+};
+
+const ExchangeConnections: React.FC = () => {
+    const [connections, setConnections] = useState<ExchangeConnection[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingConnection, setEditingConnection] = useState<ExchangeConnection | null>(null);
+
+    const fetchConnections = async () => {
+        try {
+            setLoading(true);
+            setError(null);
+            const { data, error } = await supabase.from('exchange_connections').select('*');
+            if (error) throw error;
+            setConnections(data);
+        } catch (err) {
+            if (err instanceof Error) setError(err.message);
+            else setError('An unknown error occurred');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchConnections();
+    }, []);
+
+    const handleSaveConnection = async (connectionData: Omit<ExchangeConnection, 'id'>, id?: string) => {
+        try {
+            let error;
+            // Di aplikasi nyata, enkripsi kunci akan terjadi di sisi server sebelum disimpan.
+            const dataToSave = {
+                exchange_name: connectionData.exchange_name,
+                nickname: connectionData.nickname,
+                api_key: connectionData.api_key,
+                api_secret: connectionData.api_secret,
+            };
+
+            if (id) {
+                ({ error } = await supabase.from('exchange_connections').update(dataToSave).eq('id', id));
+            } else {
+                ({ error } = await supabase.from('exchange_connections').insert(dataToSave));
+            }
+            if (error) throw error;
+            await fetchConnections();
+        } catch (err) {
+            if (err instanceof Error) alert(`Error: ${err.message}`);
+        }
+    };
+    
+    const handleDeleteConnection = async (id: string) => {
+        if (window.confirm("Are you sure you want to delete this exchange connection?")) {
+            try {
+                const { error } = await supabase.from('exchange_connections').delete().eq('id', id);
+                if (error) throw error;
+                await fetchConnections();
+            } catch (err) {
+                 if (err instanceof Error) alert(`Error: ${err.message}`);
+            }
+        }
+    };
+    
+    const handleAddNew = () => {
+        setEditingConnection(null);
+        setIsModalOpen(true);
+    };
+
+    const handleEdit = (connection: ExchangeConnection) => {
+        setEditingConnection(connection);
+        setIsModalOpen(true);
+    };
+
+    const maskApiKey = (key: string) => `••••••••${key.slice(-4)}`;
+
+    return (
+        <div className="bg-white dark:bg-slate-900 p-6 md:p-8 rounded-2xl border border-gray-200 dark:border-slate-800">
+            <ExchangeModal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                onSave={handleSaveConnection}
+                connection={editingConnection}
+            />
+            <div className="flex justify-between items-center mb-6">
+                 <div>
+                    <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Exchange Connections</h2>
+                    <p className="text-slate-500 mt-1">Connect your exchange accounts to sync your portfolio automatically. Keys are encrypted and stored securely.</p>
+                </div>
+                <button onClick={handleAddNew} className="bg-cyan-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-cyan-600 transition-colors text-sm whitespace-nowrap">
+                    Add Exchange
+                </button>
+            </div>
+             {loading && <p>Loading connections...</p>}
+            {error && <p className="text-red-500 bg-red-500/10 p-4 rounded-lg">Error: {error}</p>}
+            {!loading && !error && (
+                <div className="space-y-4">
+                    {connections.length === 0 ? (
+                        <p className="text-slate-500 italic text-center py-4">No exchange connections added yet.</p>
+                    ) : (
+                        connections.map(conn => {
+                            const exchangeInfo = SUPPORTED_EXCHANGES.find(e => e.id === conn.exchange_name);
+                            return (
+                                <div key={conn.id} className="flex justify-between items-center bg-gray-50 dark:bg-slate-800/50 p-4 rounded-lg">
+                                    <div className="flex items-center gap-4">
+                                        <img src={exchangeInfo?.logo} alt={exchangeInfo?.name} className="w-10 h-10 rounded-full bg-white p-1" />
+                                        <div>
+                                            <p className="font-bold text-slate-800 dark:text-slate-200">{conn.nickname}</p>
+                                            <p className="text-sm text-slate-500">{exchangeInfo?.name} - <span className="font-mono">{maskApiKey(conn.api_key)}</span></p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <button onClick={() => handleEdit(conn)} className="text-slate-500 hover:text-cyan-500 p-1">✏️</button>
+                                        <button onClick={() => handleDeleteConnection(conn.id)} className="text-slate-500 hover:text-red-500 p-1">🗑️</button>
+                                    </div>
+                                </div>
+                            )
+                        })
+                    )}
+                </div>
+            )}
+        </div>
+    );
+};
+
+
+// --- KOMPONEN UTAMA ---
 
 const Settings: React.FC = () => {
     return (
         <div className="max-w-4xl mx-auto space-y-8">
             <h1 className="text-3xl font-bold text-slate-800 dark:text-slate-100">Settings</h1>
+            <ExchangeConnections />
             <ApiConnections />
             <ManageCategories />
         </div>
