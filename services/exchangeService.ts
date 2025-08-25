@@ -1,6 +1,16 @@
 import { supabase } from '../lib/supabaseClient';
 
 /**
+ * Kelas error kustom untuk mengidentifikasi kegagalan CORS secara spesifik.
+ */
+export class CorsError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'CorsError';
+  }
+}
+
+/**
  * Memanggil Supabase Edge Function untuk menyinkronkan data bursa.
  * Fungsi ini mengasumsikan Anda telah membuat Edge Function bernama 'sync-exchanges'
  * di proyek Supabase Anda.
@@ -20,7 +30,7 @@ export const syncExchangeData = async (): Promise<{ message: string }> => {
   if (error) {
     // Error CORS dari `invoke` sering kali muncul sebagai TypeError umum di browser.
     if (error instanceof TypeError && error.message.toLowerCase().includes('failed to fetch')) {
-        throw new Error('CORS policy error. Please ensure your Supabase Edge Function includes the correct CORS headers.');
+        throw new CorsError('It seems the Edge Function is not responding correctly. This is often a CORS issue caused by the function not being deployed yet. Please follow the instructions to deploy your function.');
     }
     throw new Error(error.message || "Failed to sync exchange data.");
   }

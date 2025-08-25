@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import type { Asset } from '../types';
 import { formatCurrency } from '../utils/helpers';
 import { usePortfolio } from '../hooks/usePortfolio';
-import { syncExchangeData } from '../services/exchangeService';
+import { syncExchangeData, CorsError } from '../services/exchangeService';
 
 const formatMarketCap = (value: number) => {
     if (value >= 1e12) return `${(value / 1e12).toFixed(2)}T`;
@@ -11,6 +11,46 @@ const formatMarketCap = (value: number) => {
     return value.toString();
 };
 
+const CorsErrorHelp: React.FC<{ onRetry: () => void }> = ({ onRetry }) => {
+    const [copied, setCopied] = useState(false);
+    const cliCommand = 'supabase functions deploy sync-exchanges';
+
+    const copyToClipboard = () => {
+        navigator.clipboard.writeText(cliCommand).then(() => {
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        });
+    };
+
+    return (
+        <div className="bg-red-500/10 border-l-4 border-red-500 text-red-800 dark:text-red-300 p-4 rounded-r-lg" role="alert">
+            <p className="font-bold">Action Required: Deploy Your Edge Function</p>
+            <p className="mt-2 text-sm">
+                The sync feature failed because of a network error, which is almost always a CORS (Cross-Origin Resource Sharing) issue.
+            </p>
+            <p className="mt-2 text-sm">
+                This happens when the backend code in <code>/supabase/functions/sync-exchanges</code> hasn't been deployed to Supabase yet.
+            </p>
+            <div className="my-4">
+                <label className="block text-xs font-semibold mb-1">Run this command in your project terminal:</label>
+                <div className="relative">
+                    <pre className="bg-slate-800 text-slate-200 p-3 pr-20 rounded-md overflow-x-auto text-xs">
+                        <code>{cliCommand}</code>
+                    </pre>
+                    <button 
+                        onClick={copyToClipboard} 
+                        className="absolute top-1/2 right-2 -translate-y-1/2 bg-slate-600 hover:bg-slate-500 text-white px-3 py-1 rounded text-xs font-semibold"
+                    >
+                        {copied ? 'Copied!' : 'Copy'}
+                    </button>
+                </div>
+            </div>
+             <button onClick={onRetry} className="bg-cyan-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-cyan-600 transition-colors text-sm">
+                I've deployed the function, Retry Sync
+            </button>
+        </div>
+    );
+};
 
 const AssetTable: React.FC<{ title: string, assets: Asset[] }> = ({ title, assets }) => (
     <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-gray-200 dark:border-slate-800">
@@ -61,7 +101,7 @@ const AssetTable: React.FC<{ title: string, assets: Asset[] }> = ({ title, asset
 const Portfolio: React.FC = () => {
     const { cryptoAssets, stockAssets, loading, error, refresh, totalPortfolioValue } = usePortfolio();
     const [isSyncing, setIsSyncing] = useState(false);
-    const [syncError, setSyncError] = useState<string | null>(null);
+    const [syncError, setSyncError] = useState<{ message: string, type: 'cors' | 'generic' } | null>(null);
 
     const handleSync = async () => {
         setIsSyncing(true);
@@ -72,8 +112,13 @@ const Portfolio: React.FC = () => {
             // Setelah sinkronisasi berhasil, panggil refresh untuk mengambil data yang diperbarui.
             await refresh();
         } catch (err) {
-            if (err instanceof Error) setSyncError(err.message);
-            else setSyncError('An unknown error occurred during sync.');
+            if (err instanceof CorsError) {
+                setSyncError({ message: err.message, type: 'cors' });
+            } else if (err instanceof Error) {
+                setSyncError({ message: err.message, type: 'generic' });
+            } else {
+                setSyncError({ message: 'An unknown error occurred during sync.', type: 'generic' });
+            }
         } finally {
             setIsSyncing(false);
         }
@@ -99,7 +144,11 @@ const Portfolio: React.FC = () => {
             </div>
 
             {error && <div className="text-red-500 bg-red-500/10 p-4 rounded-lg">Error: {error}</div>}
-            {syncError && <div className="text-red-500 bg-red-500/10 p-4 rounded-lg">Sync Error: {syncError}</div>}
+            
+            {syncError && syncError.type === 'cors' && <CorsErrorHelp onRetry={handleSync} />}
+            {syncError && syncError.type === 'generic' && (
+                <div className="text-red-500 bg-red-500/10 p-4 rounded-lg">Sync Error: {syncError.message}</div>
+            )}
 
 
             {loading ? (
