@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { Asset } from '../types';
 import { formatCurrency } from '../utils/helpers';
 import { usePortfolio } from '../hooks/usePortfolio';
+import { syncExchangeData } from '../services/exchangeService';
 
 const formatMarketCap = (value: number) => {
     if (value >= 1e12) return `${(value / 1e12).toFixed(2)}T`;
@@ -59,6 +60,24 @@ const AssetTable: React.FC<{ title: string, assets: Asset[] }> = ({ title, asset
 
 const Portfolio: React.FC = () => {
     const { cryptoAssets, stockAssets, loading, error, refresh, totalPortfolioValue } = usePortfolio();
+    const [isSyncing, setIsSyncing] = useState(false);
+    const [syncError, setSyncError] = useState<string | null>(null);
+
+    const handleSync = async () => {
+        setIsSyncing(true);
+        setSyncError(null);
+        try {
+            const { message } = await syncExchangeData();
+            console.log(message); // "Sync completed"
+            // Setelah sinkronisasi berhasil, panggil refresh untuk mengambil data yang diperbarui.
+            await refresh();
+        } catch (err) {
+            if (err instanceof Error) setSyncError(err.message);
+            else setSyncError('An unknown error occurred during sync.');
+        } finally {
+            setIsSyncing(false);
+        }
+    };
 
     return (
         <div className="space-y-8">
@@ -69,12 +88,19 @@ const Portfolio: React.FC = () => {
                         {loading ? 'Loading...' : formatCurrency(totalPortfolioValue)}
                     </p>
                 </div>
-                 <button onClick={refresh} disabled={loading} className="bg-cyan-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-cyan-600 transition-colors disabled:opacity-50 disabled:cursor-wait w-full sm:w-auto">
-                    {loading ? 'Refreshing...' : 'Refresh'}
-                </button>
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                    <button onClick={handleSync} disabled={loading || isSyncing} className="bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 px-4 py-2 rounded-lg font-semibold hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors disabled:opacity-50 disabled:cursor-wait w-full">
+                        {isSyncing ? 'Syncing...' : 'Sync Exchanges'}
+                    </button>
+                    <button onClick={refresh} disabled={loading || isSyncing} className="bg-cyan-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-cyan-600 transition-colors disabled:opacity-50 disabled:cursor-wait w-full">
+                        {loading ? 'Refreshing...' : 'Refresh'}
+                    </button>
+                </div>
             </div>
 
             {error && <div className="text-red-500 bg-red-500/10 p-4 rounded-lg">Error: {error}</div>}
+            {syncError && <div className="text-red-500 bg-red-500/10 p-4 rounded-lg">Sync Error: {syncError}</div>}
+
 
             {loading ? (
                 <div className="text-center p-8 bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-slate-800">
