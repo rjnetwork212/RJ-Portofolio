@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import type { Asset } from '../types';
 import { formatCurrency } from '../utils/helpers';
-import { supabase } from '../lib/supabaseClient';
+import { usePortfolio } from '../hooks/usePortfolio';
 
 const formatMarketCap = (value: number) => {
     if (value >= 1e12) return `${(value / 1e12).toFixed(2)}T`;
@@ -10,18 +10,8 @@ const formatMarketCap = (value: number) => {
     return value.toString();
 };
 
-const supabaseToAsset = (item: any): Asset => ({
-  id: item.id,
-  name: item.name,
-  symbol: item.symbol,
-  price: item.price,
-  change24h: item.change_24h,
-  marketCap: item.market_cap,
-  holdings: item.holdings,
-  logo: item.logo,
-});
 
-const AssetTable: React.FC<{ title: string, assets: Asset[], isLoading: boolean, error: string | null }> = ({ title, assets, isLoading, error }) => (
+const AssetTable: React.FC<{ title: string, assets: Asset[] }> = ({ title, assets }) => (
     <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-gray-200 dark:border-slate-800">
         <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-6">{title}</h2>
         <div className="overflow-x-auto">
@@ -37,32 +27,30 @@ const AssetTable: React.FC<{ title: string, assets: Asset[], isLoading: boolean,
                     </tr>
                 </thead>
                 <tbody>
-                    {isLoading && (
-                        <tr><td colSpan={6} className="text-center p-4">Loading assets...</td></tr>
-                    )}
-                    {error && (
-                         <tr><td colSpan={6} className="text-center p-4 text-red-500">{error}</td></tr>
-                    )}
-                    {!isLoading && !error && assets.map(asset => (
-                        <tr key={asset.id} className="border-b border-gray-200 dark:border-slate-800 last:border-0 hover:bg-gray-50 dark:hover:bg-slate-800/50">
-                            <td className="p-4 font-medium text-slate-800 dark:text-slate-200">
-                                <div className="flex items-center">
-                                    <img src={asset.logo} alt={asset.name} className="w-8 h-8 mr-4 rounded-full bg-white p-1" />
-                                    <div>
-                                        <span>{asset.name}</span>
-                                        <span className="text-slate-500 dark:text-slate-500 ml-2">{asset.symbol}</span>
+                    {assets.length === 0 ? (
+                         <tr><td colSpan={6} className="text-center p-4 text-slate-500">No assets found.</td></tr>
+                    ) : (
+                        assets.map(asset => (
+                            <tr key={asset.id} className="border-b border-gray-200 dark:border-slate-800 last:border-0 hover:bg-gray-50 dark:hover:bg-slate-800/50">
+                                <td className="p-4 font-medium text-slate-800 dark:text-slate-200">
+                                    <div className="flex items-center">
+                                        <img src={asset.logo} alt={asset.name} className="w-8 h-8 mr-4 rounded-full bg-white p-1" />
+                                        <div>
+                                            <span>{asset.name}</span>
+                                            <span className="text-slate-500 dark:text-slate-500 ml-2">{asset.symbol.toUpperCase()}</span>
+                                        </div>
                                     </div>
-                                </div>
-                            </td>
-                            <td className="p-4">{formatCurrency(asset.price)}</td>
-                            <td className={`p-4 font-semibold ${asset.change24h >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                                {asset.change24h.toFixed(2)}%
-                            </td>
-                            <td className="p-4">{asset.holdings}</td>
-                            <td className="p-4 font-semibold">{formatCurrency(asset.holdings * asset.price)}</td>
-                            <td className="p-4">{formatMarketCap(asset.marketCap)}</td>
-                        </tr>
-                    ))}
+                                </td>
+                                <td className="p-4">{formatCurrency(asset.price, asset.price < 1 ? 4 : 2)}</td>
+                                <td className={`p-4 font-semibold ${asset.change24h >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                                    {asset.change24h ? `${asset.change24h.toFixed(2)}%` : '-'}
+                                </td>
+                                <td className="p-4">{asset.holdings}</td>
+                                <td className="p-4 font-semibold">{formatCurrency(asset.holdings * asset.price)}</td>
+                                <td className="p-4">{formatMarketCap(asset.marketCap)}</td>
+                            </tr>
+                        ))
+                    )}
                 </tbody>
             </table>
         </div>
@@ -70,49 +58,40 @@ const AssetTable: React.FC<{ title: string, assets: Asset[], isLoading: boolean,
 );
 
 const Portfolio: React.FC = () => {
-    const [cryptoAssets, setCryptoAssets] = useState<Asset[]>([]);
-    const [stockAssets, setStockAssets] = useState<Asset[]>([]);
-    const [loading, setLoading] = useState({ crypto: true, stocks: true });
-    const [error, setError] = useState<{ crypto: string | null, stocks: string | null }>({ crypto: null, stocks: null });
-
-    useEffect(() => {
-        const fetchAssets = async (assetType: 'crypto' | 'stocks') => {
-            const tableName = assetType === 'crypto' ? 'crypto_assets' : 'stock_assets';
-            try {
-                setLoading(prev => ({ ...prev, [assetType]: true }));
-
-                const { data, error } = await supabase.from(tableName).select('*');
-                if (error) throw error;
-
-                const mappedData = data.map(supabaseToAsset);
-                if (assetType === 'crypto') setCryptoAssets(mappedData);
-                else setStockAssets(mappedData);
-
-            } catch (err: any) {
-                setError(prev => ({ ...prev, [assetType]: err.message }));
-            } finally {
-                setLoading(prev => ({ ...prev, [assetType]: false }));
-            }
-        };
-
-        fetchAssets('crypto');
-        fetchAssets('stocks');
-    }, []);
+    const { cryptoAssets, stockAssets, loading, error, refresh, totalPortfolioValue } = usePortfolio();
 
     return (
         <div className="space-y-8">
-            <AssetTable 
-                title="Cryptocurrency Assets" 
-                assets={cryptoAssets} 
-                isLoading={loading.crypto} 
-                error={error.crypto} 
-            />
-            <AssetTable 
-                title="Stock Assets" 
-                assets={stockAssets} 
-                isLoading={loading.stocks} 
-                error={error.stocks} 
-            />
+            <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-gray-200 dark:border-slate-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                    <h2 className="text-sm text-slate-500 dark:text-slate-400">Total Portfolio Value</h2>
+                    <p className="text-3xl font-bold text-slate-800 dark:text-slate-100 mt-1">
+                        {loading ? 'Loading...' : formatCurrency(totalPortfolioValue)}
+                    </p>
+                </div>
+                 <button onClick={refresh} disabled={loading} className="bg-cyan-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-cyan-600 transition-colors disabled:opacity-50 disabled:cursor-wait w-full sm:w-auto">
+                    {loading ? 'Refreshing...' : 'Refresh'}
+                </button>
+            </div>
+
+            {error && <div className="text-red-500 bg-red-500/10 p-4 rounded-lg">Error: {error}</div>}
+
+            {loading ? (
+                <div className="text-center p-8 bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-slate-800">
+                    <p className="text-slate-500">Loading portfolio data...</p>
+                </div>
+            ) : (
+                <div className="space-y-8">
+                    <AssetTable 
+                        title="Cryptocurrency Assets" 
+                        assets={cryptoAssets} 
+                    />
+                    <AssetTable 
+                        title="Stock Assets" 
+                        assets={stockAssets}
+                    />
+                </div>
+            )}
         </div>
     );
 };

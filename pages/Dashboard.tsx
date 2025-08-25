@@ -4,9 +4,10 @@ import DashboardCard from '../components/DashboardCard';
 import type { Transaction, Budget, Goal } from '../types';
 import { formatCurrency } from '../utils/helpers';
 import { supabase } from '../lib/supabaseClient';
+import { usePortfolio } from '../hooks/usePortfolio';
 
-// NOTE: Portfolio, budget, and goal data are still mocked for simplicity.
-const portfolioData = [
+// CATATAN: Data portofolio, anggaran, dan tujuan masih dimock untuk kesederhanaan.
+const portfolioChartData = [
     { name: 'Jan', value: 10000 },
     { name: 'Feb', value: 12000 },
     { name: 'Mar', value: 11000 },
@@ -103,6 +104,8 @@ const Dashboard: React.FC = () => {
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const { totalPortfolioValue, loading: portfolioLoading } = usePortfolio();
+
 
     useEffect(() => {
         const fetchTransactions = async () => {
@@ -129,15 +132,13 @@ const Dashboard: React.FC = () => {
     const netIncome = totalIncome - totalExpenses;
     const businessRevenue = transactions.filter(t => t.type === 'income' && t.category === 'Business').reduce((sum, t) => sum + t.amount, 0);
     
-    // NOTE: Net worth is simplified. In a real app, you'd fetch portfolio values too.
-    const netWorth = 20000 + netIncome; // Example starting portfolio value + net income
     const recentTransactions = [...transactions].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 5);
     
   return (
     <div className="space-y-8">
       {/* Stat Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <DashboardCard title="Net Worth" value={formatCurrency(netWorth)} change={1.2} icon={<span>💼</span>} />
+        <DashboardCard title="Net Worth" value={portfolioLoading ? '...' : formatCurrency(totalPortfolioValue)} change={1.2} icon={<span>💼</span>} />
         <DashboardCard title="Net Income" value={loading ? '...' : formatCurrency(netIncome)} change={-0.5} icon={<span>💰</span>} />
         <DashboardCard title="Business Revenue" value={loading ? '...' : formatCurrency(businessRevenue)} change={5.2} icon={<span>📊</span>} />
         <DashboardCard title="Total Expenses" value={loading ? '...' : formatCurrency(totalExpenses)} icon={<span>💸</span>} />
@@ -149,7 +150,7 @@ const Dashboard: React.FC = () => {
             <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-4">Portfolio Trend</h2>
             <div style={{ width: '100%', height: 300 }}>
                 <ResponsiveContainer>
-                    <AreaChart data={portfolioData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                    <AreaChart data={portfolioChartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                         <defs>
                             <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
                                 <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.8}/>
