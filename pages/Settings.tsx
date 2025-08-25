@@ -4,6 +4,58 @@ import { SettingsContext } from '../contexts/SettingsContext';
 import type { Category, AppSettings, ExchangeConnection } from '../types';
 import { supabase } from '../lib/supabaseClient';
 
+// --- KOMPONEN BANTUAN SETUP DATABASE ---
+
+const MissingTableInstructions: React.FC<{ onRetry: () => void }> = ({ onRetry }) => {
+    const [copied, setCopied] = useState(false);
+    const sqlSnippet = `-- This SQL creates the required 'exchange_connections' table.
+-- Go to your Supabase project's "SQL Editor" and run this command.
+
+CREATE TABLE public.exchange_connections (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  exchange_name text NOT NULL,
+  nickname text NOT NULL,
+  api_key text NOT NULL,
+  api_secret text NOT NULL,
+  CONSTRAINT exchange_connections_pkey PRIMARY KEY (id)
+);`;
+
+    const copyToClipboard = () => {
+        navigator.clipboard.writeText(sqlSnippet).then(() => {
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        });
+    };
+
+    return (
+        <div className="bg-yellow-500/10 border-l-4 border-yellow-500 text-yellow-800 dark:text-yellow-300 p-4 rounded-r-lg" role="alert">
+            <p className="font-bold">Action Required: Database Setup</p>
+            <p className="mt-2 text-sm">
+                The application needs the <code>exchange_connections</code> table in your database, but it couldn't be found.
+            </p>
+            <p className="mt-2 text-sm">
+                Please run the following SQL command in your Supabase project's <strong>SQL Editor</strong> to create it.
+            </p>
+            <div className="relative my-4">
+                <pre className="bg-slate-800 text-slate-200 p-4 pr-16 rounded-md overflow-x-auto text-xs">
+                    <code>{sqlSnippet}</code>
+                </pre>
+                <button 
+                    onClick={copyToClipboard} 
+                    className="absolute top-2 right-2 bg-slate-600 hover:bg-slate-500 text-white px-3 py-1 rounded text-xs font-semibold"
+                >
+                    {copied ? 'Copied!' : 'Copy'}
+                </button>
+            </div>
+             <button onClick={onRetry} className="bg-cyan-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-cyan-600 transition-colors text-sm">
+                I've created the table, Retry
+            </button>
+        </div>
+    );
+};
+
+
 // --- BAGIAN KATEGORI ---
 
 interface CategoryModalProps {
@@ -297,23 +349,24 @@ const ExchangeConnections: React.FC = () => {
     const [connections, setConnections] = useState<ExchangeConnection[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [isTableMissing, setIsTableMissing] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingConnection, setEditingConnection] = useState<ExchangeConnection | null>(null);
 
     const fetchConnections = async () => {
+        setLoading(true);
+        setError(null);
+        setIsTableMissing(false);
         try {
-            setLoading(true);
-            setError(null);
-            const { data, error } = await supabase.from('exchange_connections').select('*');
-            if (error) throw error;
+            const { data, error: dbError } = await supabase.from('exchange_connections').select('*');
+            if (dbError) throw dbError;
             setConnections(data || []);
         } catch (err: any) {
-            if (err && err.message && (err.code === '42P01' || err.message.includes('does not exist'))) {
-                setError('Database table "exchange_connections" not found. Please create it in your Supabase project.');
-            } else if (err && err.message) {
-                setError(err.message);
+            const errorMessage = err.message || '';
+            if (err.code === '42P01' || errorMessage.includes('does not exist') || errorMessage.includes('schema cache')) {
+                setIsTableMissing(true);
             } else {
-                setError('An unknown error occurred');
+                setError(errorMessage || 'An unknown error occurred');
             }
         } finally {
             setLoading(false);
@@ -390,7 +443,9 @@ const ExchangeConnections: React.FC = () => {
             </div>
              {loading && <p>Loading connections...</p>}
             {error && <p className="text-red-500 bg-red-500/10 p-4 rounded-lg">Error: {error}</p>}
-            {!loading && !error && (
+            {isTableMissing && <MissingTableInstructions onRetry={fetchConnections} />}
+            
+            {!loading && !error && !isTableMissing && (
                 <div className="space-y-4">
                     {connections.length === 0 ? (
                         <p className="text-slate-500 italic text-center py-4">No exchange connections added yet.</p>
